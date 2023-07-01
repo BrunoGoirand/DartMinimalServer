@@ -3,36 +3,58 @@ import 'dart:isolate';
 
 void main() async {
   //
+  // Get the prompt from environment variable if it is present
+  String? prompt = Platform.environment['searlesPrompt'];
+  // Otherwise set the default value
+  prompt ??= '>';
+  //
   String returnedString = '';
   //
-  final server = await ServerSocket.bind('localhost', 8765, shared: true);
+  final server = await ServerSocket.bind(
+    'localhost',
+    8765, /* shared: true, */
+  );
   print('Server listening on ${server.address}:${server.port}');
 
+  // Display the prompt initially
+  stdout.write('$prompt ');
+
   // Handle commands from the shell
+  // await for (final data in stdin) {
   stdin.listen((data) async {
-    final command = String.fromCharCodes(data).trim();
+    final command = String.fromCharCodes(data).trim().toLowerCase();
     if (command == 'exit') {
-      // isolate.kill();
+      // Close all client connections ?
+      // server.forEach((socket) {
+      //   socket.close();
+      // });
       server.close();
       exit(0);
     } else {
       print('Command received from shell: $command');
       returnedString = await handleCommands(command);
       print('Result computed: $returnedString');
+      // Display the prompt again
+      stdout.write('$prompt ');
     }
   });
 
   // Handle commands from the server
   await server.forEach((socket) {
-    print('Client connected from ${socket.remoteAddress}:${socket.remotePort}');
+    print(
+        '\rClient connected from ${socket.remoteAddress}:${socket.remotePort}');
+    // Display the prompt again
+    stdout.write('$prompt ');
     socket.listen((data) async {
-      final command = String.fromCharCodes(data).trim();
+      final command = String.fromCharCodes(data).trim().toLowerCase();
       if (command == 'exit') {
         socket.close();
       } else {
-        print('Command received from client: $command');
+        print('\rCommand received from client: $command');
         returnedString = await handleCommands(command);
         socket.writeln('Command returned: $returnedString');
+        // Display the prompt again
+        stdout.write('$prompt ');
       }
     });
   });
