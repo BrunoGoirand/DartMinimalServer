@@ -1,0 +1,87 @@
+//
+import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
+// import 'dart:convert';
+
+Future<void> main() async {
+  //
+  bool keepAlive = true;
+
+  while (keepAlive) {
+    //
+    String? command = '';
+    if (stdin.hasTerminal) {
+      // stdin is available
+      stdout.write('> ');
+      command = stdin.readLineSync();
+    } else {
+      print('stdin is not available');
+    }
+
+    switch (command) {
+      case 'quit':
+        keepAlive = false;
+        break;
+      case 'date':
+        final returnedData = await Isolate.run(() => _computeDate());
+        print('Received date: [$returnedData]');
+        break;
+      case 'time':
+        final returnedData = await Isolate.run(() => _computeTime());
+        print('Received time: [$returnedData]');
+        break;
+      default:
+        print('invalid command [$command]');
+        continue;
+    }
+  }
+}
+
+Future<String> _computeDate() async {
+  DateTime currentDate = DateTime.now();
+  final returnedDate =
+      'current date: ${currentDate.year}-${currentDate.month}-${currentDate.day}';
+  return returnedDate;
+}
+
+Future<String> _computeTime() async {
+  DateTime currentTime = DateTime.now();
+  final returnedTime =
+      'Current time: ${currentTime.hour}:${currentTime.minute}:${currentTime.second}';
+  return returnedTime;
+}
+
+void _main() {
+  ServerSocket.bind('127.0.0.1', 8080).then((serverSocket) {
+    print(
+        'Server listening on ${serverSocket.address.address}:${serverSocket.port}');
+
+    serverSocket.listen((socket) {
+      print(
+          'Client connected: ${socket.remoteAddress.address}:${socket.remotePort}');
+
+      socket.listen((data) {
+        String message = String.fromCharCodes(data).trim();
+        print('Received from client: $message');
+
+        if (message == 'exit') {
+          socket.writeln('exit'); // Echo the "exit" message back to the client
+          socket.close(); // Close the client socket gracefully
+        }
+      }, onError: (error) {
+        if (error.osError?.errorCode == 54) {
+          print('Client disconnected');
+        } else {
+          print('Client error: $error');
+        }
+        socket.close();
+      }, onDone: () {
+        print('Client disconnected');
+        socket.close();
+      });
+    });
+  }).catchError((error) {
+    print('Server error: $error');
+  });
+}

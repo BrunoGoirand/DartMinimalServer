@@ -1,0 +1,48 @@
+//
+import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
+// import 'dart:convert';
+
+Future<void> main() async {
+  //
+  bool keepAlive = true;
+
+  while (keepAlive) {
+    stdout.write('> ');
+    String? command = stdin.readLineSync();
+
+    switch (command) {
+      case 'quit':
+        keepAlive = false;
+        break;
+      case 'date':
+        final returnedData = await Isolate.run(() => _computeDate());
+        print('Received date: [$returnedData]');
+        command = 'nop';
+        break;
+      case 'time':
+        final returnedData = await Isolate.run(() => _computeTime());
+        print('Received time: [$returnedData]');
+        command = 'nop';
+        break;
+      default:
+        print('invalid command [$command]');
+        continue;
+    }
+  }
+}
+
+Future<String> _computeDate() async {
+  DateTime currentDate = DateTime.now();
+  final returnedDate =
+      'current date: ${currentDate.year}-${currentDate.month}-${currentDate.day}';
+  return returnedDate;
+}
+
+Future<String> _computeTime() async {
+  DateTime currentTime = DateTime.now();
+  final returnedTime =
+      'Current time: ${currentTime.hour}:${currentTime.minute}:${currentTime.second}';
+  return returnedTime;
+}

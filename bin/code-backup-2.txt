@@ -1,0 +1,164 @@
+import 'dart:io';
+// import 'dart:async';
+import 'dart:isolate';
+// import 'package:mysql_client/mysql_client.dart';
+
+void main() async {
+  final commandReceivePort = ReceivePort();
+  final serverReceivePort = ReceivePort();
+
+  final commandIsolate = await Isolate.spawn(
+    commandIsolateEntryPoint,
+    commandReceivePort.sendPort,
+  );
+  final serverIsolate = await Isolate.spawn(
+    serverIsolateEntryPoint,
+    serverReceivePort.sendPort,
+  );
+
+  await for (final command in commandReceivePort) {
+    if (command == 'exit') {
+      serverReceivePort.sendPort.send('exit');
+      serverReceivePort.close();
+      break;
+    }
+    serverReceivePort.sendPort.send(command);
+  }
+
+  commandReceivePort.close();
+  commandIsolate.kill(priority: Isolate.immediate);
+}
+
+void commandIsolateEntryPoint(SendPort sendPort) {
+  final commandReceivePort = ReceivePort();
+  sendPort.send(commandReceivePort.sendPort);
+
+  commandReceivePort.listen((command) {
+    // Handle commands received from the main isolate
+    // Add your command handling logic here
+  });
+}
+
+void serverIsolateEntryPoint(SendPort sendPort) async {
+  final server = await ServerSocket.bind('localhost', 8765);
+  sendPort.send(server.port);
+
+  await for (final socket in server) {
+    handleConnection(socket, sendPort);
+  }
+}
+
+void handleConnection(Socket socket, SendPort sendPort) {
+  socket.writeln('Connected to the server.');
+
+  socket.listen((data) {
+    final command = String.fromCharCodes(data).trim();
+    // Handle commands received from the connected client
+    // Add your command handling logic here
+
+    if (command == 'exit') {
+      socket.writeln('Closing the connection.');
+      socket.close();
+      sendPort.send('exit');
+    }
+  });
+}
+
+
+
+// void main() {
+//   ServerSocket.bind(InternetAddress.anyIPv4, 8765).then((serverSocket) {
+//     print('Server listening on port 8765');
+//     serverSocket.listen((clientSocket) {
+//       print(
+//           'Client connected: ${clientSocket.remoteAddress.address}:${clientSocket.remotePort}');
+
+//       clientSocket.write('Welcome to the server!\n');
+//       // clientSocket.write('Type "exit" to disconnect.\n');
+
+//       clientSocket.listen((data) {
+//         String message = String.fromCharCodes(data).trim();
+//         print('Received from client: $message');
+
+//         if (message == 'exit') {
+//           //
+//           clientSocket.writeln('Goodbye!');
+//           clientSocket.close();
+//         } else if (message == 'search') {
+//           //
+//           connectDatabase();
+//         } else {
+//           //
+//           clientSocket.writeln('You said: $message');
+//         }
+//       }, onError: (error) {
+//         if (error.osError?.errorCode == 54) {
+//           print('Client disconnected');
+//         } else {
+//           print('Client error: $error');
+//           clientSocket.close();
+//         }
+//       }, onDone: () {
+//         print('Client disconnected');
+//         clientSocket.close();
+//       });
+//     });
+//   }).catchError((error) {
+//     print('Server error: $error');
+//   });
+// }
+
+// void connectDatabase() async {
+//   //
+//   print('connecting database...');
+
+//   // create connection
+//   final dbConn = await MySQLConnection.createConnection(
+//     // host: 'localhost',
+//     host: "127.0.0.1",
+//     port: 3306,
+//     userName: 'root',
+//     password: 'M4sql*R01t',
+//     databaseName: 'us-cities',
+//   );
+
+//   await dbConn.connect();
+
+//   print('connected');
+
+//   try {
+//     // make query
+//     final result = await dbConn.execute(
+//         'SELECT DISTINCT city_name FROM city WHERE LEFT(city_name, :cityStartLength) = :cityStart AND LENGTH(city_name) = :cityLength AND city_name NOT LIKE :noSpace AND city_name NOT LIKE :noDash ORDER BY city_name ASC',
+//         {
+//           'cityLength': 7,
+//           'cityStartLength': 2,
+//           'cityStart': 'se',
+//           'noSpace': '% %',
+//           'noDash': '%-%',
+//         });
+
+//     // print some result data
+//     print('# columns [${result.numOfColumns}]');
+//     print('# rows [${result.numOfRows}]');
+//     // print(result.lastInsertID);
+//     // print(result.affectedRows);
+
+//     print('query executed');
+
+//     //
+//     if (result.numOfRows > 0) {
+//       for (final row in result.rows) {
+//         print(row.colByName('city_name'));
+//       }
+//     } else {
+//       print('no data found in the query result');
+//     }
+//   } catch (e) {
+//     //
+//     print('Error: $e');
+//   } finally {
+//     // close all connections
+//     await dbConn.close();
+//   }
+// }

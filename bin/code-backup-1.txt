@@ -1,0 +1,46 @@
+import 'dart:io';
+import 'dart:convert';
+
+void main(List<String> arguments) async {
+  final server = await ServerSocket.bind('192.168.21.186', 8765);
+  print('Server listening on port 8765');
+
+  await for (Socket socket in server) {
+    handleConnection(socket);
+  }
+}
+
+void handleConnection(Socket socket) {
+  //
+  print('new connection: ${socket.remoteAddress}:${socket.remotePort}');
+  //
+  socket.writeln('Bienvenue sur le serveur Dart !');
+  socket.writeln('Entrez votre commande :');
+
+  socket.listen((List<int> data) {
+    final command = String.fromCharCodes(data).trim();
+    executeCommand(command, socket);
+  }, onDone: () {
+    socket.close();
+  });
+}
+
+void executeCommand(String command, Socket socket) {
+  Process.start(command, []).then((process) {
+    process.stdout.transform(utf8.decoder).listen((output) {
+      socket.writeln(output);
+    });
+
+    process.stderr.transform(utf8.decoder).listen((error) {
+      socket.writeln('Erreur : $error');
+    });
+
+    process.exitCode.then((exitCode) {
+      socket.writeln('Code de sortie : $exitCode');
+      socket.writeln('Entrez votre commande :');
+    });
+  }).catchError((error) {
+    socket.writeln('Erreur lors de l\'exécution de la commande : $error');
+    socket.writeln('Entrez votre commande :');
+  });
+}
