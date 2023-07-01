@@ -8,9 +8,6 @@ void main() async {
   final server = await ServerSocket.bind('localhost', 8765, shared: true);
   print('Server listening on ${server.address}:${server.port}');
 
-  // Spawn a new isolate to handle network client connections
-  // final isolate = await Isolate.spawn(networkIsolate, server.port);
-
   // Handle commands from the shell
   stdin.listen((data) async {
     final command = String.fromCharCodes(data).trim();
@@ -80,21 +77,4 @@ Future<String> _computeTime() async {
   final returnedTime =
       'Current time: ${currentTime.hour}:${currentTime.minute}:${currentTime.second}';
   return returnedTime;
-}
-
-//
-void networkIsolate(int port) async {
-  final server = await ServerSocket.bind('localhost', port, shared: true);
-  print('Network isolate listening on ${server.address}:${server.port}');
-
-  server.listen((socket) {
-    socket.writeln('Welcome to the server!');
-    socket.listen((data) {
-      final command = String.fromCharCodes(data).trim();
-      socket.writeln('Command received: $command');
-      if (command == 'exit') {
-        socket.close();
-      }
-    });
-  });
 }
