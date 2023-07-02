@@ -1,3 +1,6 @@
+// file: searles.dart
+// license: see LICENSE.md
+//
 import 'dart:io';
 import 'dart:isolate';
 
@@ -12,7 +15,8 @@ void main() async {
   //
   final server = await ServerSocket.bind(
     'localhost',
-    8765, /* shared: true, */
+    8765,
+    /* shared: true, */
   );
   print('Server listening on ${server.address}:${server.port}');
 
