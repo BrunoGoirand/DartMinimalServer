@@ -24,24 +24,27 @@ void main() async {
   stdout.write('$prompt ');
 
   // Handle commands from the shell
-  // await for (final data in stdin) {
-  stdin.listen((data) async {
-    final command = String.fromCharCodes(data).trim().toLowerCase();
-    if (command == 'exit') {
-      // Close all client connections ?
-      // server.forEach((socket) {
-      //   socket.close();
-      // });
-      server.close();
-      exit(0);
-    } else {
-      print('Command received from shell: $command');
-      returnedString = await handleCommands(command);
-      print('Result computed: $returnedString');
-      // Display the prompt again
-      stdout.write('$prompt ');
-    }
-  });
+  // only if it is not running as a service
+  if (stdin.hasTerminal) {
+    // stdin is available
+    stdin.listen((data) async {
+      final command = String.fromCharCodes(data).trim().toLowerCase();
+      if (command == 'exit') {
+        // Close all client connections ?
+        // server.forEach((socket) {
+        //   socket.close();
+        // });
+        server.close();
+        exit(0);
+      } else {
+        print('Command received from shell: $command');
+        returnedString = await handleCommands(command);
+        print('Result computed: $returnedString');
+        // Display the prompt again
+        stdout.write('$prompt ');
+      }
+    });
+  }
 
   // Handle commands from the server
   await server.forEach((socket) {
